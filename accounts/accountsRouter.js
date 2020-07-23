@@ -7,13 +7,13 @@ const router = express.Router();
 // //--------------------
 //     //Create
 // //--------------------
-router.post('/', (req, res) => {
+router.post('/', validateAccount, (req, res) => {
     db.select().from('accounts')
         .insert(req.body)
-            .then(data => {
+            .then(() => {
                 res.status(201).json(req.body)
             })
-            .catch(err => {
+            .catch(() => {
                 res.status(500).json({message: 'failed to make post'})
             })
 })
@@ -34,63 +34,73 @@ router.get('/', (req, res) => {
 // //--------------------
 //     //Read - id
 // //--------------------
-router.get('/:id', (req, res) => {
-    const { id } = req.params;
+router.get('/:id', validateId, (req, res) => {
+    const { id } = req.params
 
     db.select().from('accounts')
         .where({ id })
             .then(data => {
-                if(data) {
-                    res.status(200).json({data})
-                } else {
-                    res.status(400).json({message: 'Account not found.'})
-                }
-            })
-            .catch(err => {
-                res.status(500).json({message: 'Error returning account.', err})
-            })
+                res.status(200).json(data)
+            })  
 })
 
 // //--------------------
 //     //Update
 // //--------------------
-router.put('/:id', (req, res) => {
+router.put('/:id',validateId, (req, res) => {
     const { id } = req.params;
 
     db.select().from('accounts')
         .where({ id })
             .update(req.body)
                 .then(count => {
-                    if(count) {
-                        res.json({ updated: count })
-                    } else {
-                        res.status(404).json({ message: 'invalid id' })
-                    }
-                })
-                .catch(err => {
-                    res.status(500).json({ message:'failed to update', err})
+                    res.status(201).json({ updated: count })
                 })
 })
 
 // //--------------------
 //     //Delete
 // //--------------------
-router.delete('/:id', (req, res) => {
+router.delete('/:id', validateId, (req, res) => {
     const { id } = req.params;
 
     db.select().from('accounts')        
         .where({ id })
             .del()
                 .then(count => {
-                    if (count) {
-                        res.json({ deleted: count });
-                    } else {
-                        res.status(404).json({ message: 'invalid id' });
-                    }
-                })
-                .catch(err => {
-                    res.status(500).json({message:'failed to update', err})
+                    res.json({ message: 'Account deleted' });
                 })
 })
+
+// //--------------------
+//     //Middleware
+// //--------------------
+function validateAccount(req, res, next) {
+    const { name, budget } = req.body;
+
+    if ( !name || !budget) {
+        res.status(400).json({ message: 'Please add name and/or budget'})
+    } else {
+        next();
+    }
+}
+
+function validateId(req, res, next) {
+    const { id } = req.params
+
+    db.select().from('accounts')
+        .where({ id })
+            .then(data => {
+                if (data.length > 0) {
+                    next();
+                } else {                    
+                    res.status(404).json({ message: 'Invalid Id'}) 
+                }
+            })
+            .catch(err => {
+                res.status(500).json({ message: 'Unable to retrieve account'})
+            })
+
+}
 
 module.exports = router;
